@@ -8,6 +8,6 @@ using System.Reflection;
 
 static class BuildInfo
 {
-    internal const string Version = "1.1.1";
+    internal const string Version = "1.1.2";
     internal const string Title = "HoyoLab AutoCheckin";
 }
