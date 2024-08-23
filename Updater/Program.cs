@@ -27,6 +27,7 @@ namespace Updater
         internal static string[] OriginalArgs { get; private set; } = Array.Empty<string>();
         static async Task Main(string[] args)
         {
+            Environment.CurrentDirectory = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule!.FileName!)!;
             try
             {
                 await WrapMain(args);

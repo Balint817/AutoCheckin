@@ -81,6 +81,7 @@ namespace AutoCheckin
         }
         static async Task Main(string[] args)
         {
+            Environment.CurrentDirectory = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule!.FileName!)!;
             if (args.Contains("-help"))
             {
                 await Console.Out.WriteLineAsync("-help       Displays this menu");
