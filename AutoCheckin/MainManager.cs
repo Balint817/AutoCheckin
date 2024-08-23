@@ -1,5 +1,6 @@
 ﻿using AutoCheckin.Games;
 using AutoCheckin.Objects;
+using Constants;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
@@ -33,6 +34,8 @@ namespace AutoCheckin
 
         [JsonPropertyName("allVerbosityOptions")]
         public string[] AllVerbosityOptions => Enum.GetNames<Verbosity>();
+        [JsonPropertyName(Values.LastVersionKey)]
+        public string LastSkippedVersion { get; set; }
         public bool TryGetSettings(string key, [MaybeNullWhen(false)]out Settings settings)
         {
             return AllSettings.TryGetValue(key, out settings);

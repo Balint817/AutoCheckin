@@ -1,33 +1,86 @@
-﻿using System.IO;
+﻿using Constants;
+using System.Diagnostics;
+using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows;
+using Updater;
 
 namespace AutoCheckin
 {
-
-    internal class Program
+    public enum MessageBoxAction
+    {
+        None,
+        Accept,
+        Reject
+    }
+    public class Program
     {
         internal static HttpClient Client { get; set; } = new();
-
-        internal static JsonSerializerOptions JsonOptions = new()
-        {
-            AllowTrailingCommas = true,
-            NumberHandling = JsonNumberHandling.Strict,
-            ReadCommentHandling = JsonCommentHandling.Skip,
-            WriteIndented = true,
-        };
-        internal static string SettingsPath = "settings.json";
-        internal static string TriedCodesPath = "triedCodes.json";
+        internal static JsonSerializerOptions JsonOptions => Values.JsonOptions;
+        internal const string SettingsPath = Values.SettingsPath;
+        internal const string TriedCodesPath = Values.TriedCodesPath;
         internal static MainManager MainManager = null!;
-        public enum MessageBoxAction
-        {
-            None,
-            Accept,
-            Reject
-        }
         public static MessageBoxAction DefaultMessageBoxAction = MessageBoxAction.None;
+
+        static async Task Update(bool exitAfter, string[] programArgs)
+        {
+            if (!UpdatesEnabled)
+            {
+                return;
+            }
+            await Logger.Log("Checking for updates...", Verbosity.Silent);
+            var startInfo = new ProcessStartInfo("Updater.exe")
+            {
+                UseShellExecute = true,
+            };
+            if (!exitAfter)
+            {
+                startInfo.ArgumentList.Add("-restart");
+            }
+            if (DefaultMessageBoxAction != MessageBoxAction.None)
+            {
+                startInfo.ArgumentList.Add("-popupless");
+            }
+            var process = Process.Start(startInfo)!;
+            await process.WaitForExitAsync();
+            switch ((UpdaterExitCode)process.ExitCode)
+            {
+                case UpdaterExitCode.UpToDate:
+                    await Logger.Log("Up to date.", Verbosity.Silent);
+                    if (exitAfter)
+                    {
+                        await Utils.ExitFunction(true);
+                    }
+                    break;
+                case UpdaterExitCode.UpdateSkipped:
+                    await Logger.Log("Update skipped.", Verbosity.Silent);
+                    if (exitAfter)
+                    {
+                        await Utils.ExitFunction(true);
+                    }
+                    break;
+                case UpdaterExitCode.Update:
+                    await Logger.Log("Update requested. Closing...", Verbosity.Silent);
+                    startInfo.ArgumentList.Add("-forceupdate");
+                    startInfo.ArgumentList.Add("--original");
+                    foreach (var arg in programArgs)
+                    {
+                        startInfo.ArgumentList.Add(arg);
+                    }
+                    Process.Start(startInfo);
+                    Environment.Exit(0);
+                    break;
+                default:
+                    await Logger.Log("Encountered an error during the update check", Verbosity.Silent);
+                    if (exitAfter)
+                    {
+                        await Utils.ExitFunction(true);
+                    }
+                    break;
+            }
+        }
         static async Task Main(string[] args)
         {
             if (args.Contains("-help"))
@@ -36,9 +89,26 @@ namespace AutoCheckin
                 await Console.Out.WriteLineAsync("-reset      Resets all settings");
                 await Console.Out.WriteLineAsync("-nopopups   Rejects all message boxes");
                 await Console.Out.WriteLineAsync("-yespopups  Accepts all message boxes");
+                await Console.Out.WriteLineAsync("-update     Exits after updating");
+                await Console.Out.WriteLineAsync("-noupdate   Disables update check");
+                await Console.Out.WriteLineAsync();
+                await Console.Out.WriteLineAsync("If popups are skipped, updates are automatically accepted.");
+                await Console.Out.WriteLineAsync("If popups are rejected, 'Press enter to exit' is also skipped");
+                await Console.Out.WriteLineAsync();
+                await Console.Out.WriteLineAsync("-updated    Used internally after an update");
                 await Utils.ExitFunction(false);
                 return;
             }
+
+            if (args.Contains("-noupdate"))
+            {
+                if (args.Contains("-update"))
+                {
+                    throw new ArgumentException("conflicting arguments", nameof(args));
+                }
+                UpdatesEnabled = false;
+            }
+
             if (args.Contains("-nopopups"))
             {
                 if (args.Contains("-yespopups"))
@@ -56,6 +126,7 @@ namespace AutoCheckin
             await TrueMain(args);
         }
 
+        internal static bool UpdatesEnabled { get; private set; } = true;
         static async Task Testing()
         {
             await Task.CompletedTask;
@@ -69,10 +140,20 @@ namespace AutoCheckin
             }
             catch (Exception)
             {
-                Console.WriteLine("Failed to initialize Logger.");
+                await Console.Out.WriteLineAsync("Failed to initialize Logger.");
                 await Utils.ExitFunction(false);
                 return;
             }
+
+            if (args.Contains("-updated"))
+            {
+                await Console.Out.WriteLineAsync("Successfully installed update.");
+            }
+            else
+            {
+                await Update(args.Contains("-update"), args);
+            }
+
             bool? error = false;
             try
             {
@@ -142,6 +223,7 @@ namespace AutoCheckin
             {
                 await Utils.ExitFunction(false);
             }
+
         }
     }
 }

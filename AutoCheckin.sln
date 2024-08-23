@@ -3,7 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.9.34728.123
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoCheckin", "AutoCheckin.csproj", "{3C622419-4C42-40E1-90A9-FDB0F13AD3B0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AutoCheckin", "AutoCheckin\AutoCheckin.csproj", "{3C622419-4C42-40E1-90A9-FDB0F13AD3B0}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Updater", "Updater\Updater.csproj", "{7CD5BF1F-B21B-4E46-A25D-24F87D812FE7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Constants", "Constants\Constants.csproj", "{6246BEE0-EBC3-4957-8C1A-CE531DFC6EEF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +19,14 @@ Global
 		{3C622419-4C42-40E1-90A9-FDB0F13AD3B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3C622419-4C42-40E1-90A9-FDB0F13AD3B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3C622419-4C42-40E1-90A9-FDB0F13AD3B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7CD5BF1F-B21B-4E46-A25D-24F87D812FE7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7CD5BF1F-B21B-4E46-A25D-24F87D812FE7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7CD5BF1F-B21B-4E46-A25D-24F87D812FE7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7CD5BF1F-B21B-4E46-A25D-24F87D812FE7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6246BEE0-EBC3-4957-8C1A-CE531DFC6EEF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6246BEE0-EBC3-4957-8C1A-CE531DFC6EEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6246BEE0-EBC3-4957-8C1A-CE531DFC6EEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6246BEE0-EBC3-4957-8C1A-CE531DFC6EEF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -9,6 +9,7 @@
 	<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 	<ProduceReferenceAssembly>False</ProduceReferenceAssembly>
 	<EnableNETAnalyzers>False</EnableNETAnalyzers>
+	<GenerateAssemblyInfo>False</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -27,13 +28,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="MiscUtil">
-      <HintPath>Dependencies\MiscUtil.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\Constants\Constants.csproj" />
+    <ProjectReference Include="..\Updater\Updater.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Properties\" />
+    <Reference Include="MiscUtil">
+      <HintPath>Dependencies\MiscUtil.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

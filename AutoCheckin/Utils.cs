@@ -75,6 +75,14 @@ namespace AutoCheckin
         }
         public static async Task ExitFunction(bool exitEnv = true)
         {
+            if (Program.DefaultMessageBoxAction == MessageBoxAction.Reject)
+            {
+                if (exitEnv)
+                {
+                    Environment.Exit(0);
+                }
+                return;
+            }
             await Console.Out.WriteLineAsync();
             await Console.Out.WriteLineAsync("Press Enter to exit.");
             while (true)
@@ -228,9 +236,9 @@ namespace AutoCheckin
         {
             return Program.DefaultMessageBoxAction switch
             {
-                Program.MessageBoxAction.None => MessageBox.Show(text, title, MessageBoxButton.YesNo),
-                Program.MessageBoxAction.Accept => MessageBoxResult.Yes,
-                Program.MessageBoxAction.Reject => MessageBoxResult.No,
+                MessageBoxAction.None => MessageBox.Show(text, title, MessageBoxButton.YesNo),
+                MessageBoxAction.Accept => MessageBoxResult.Yes,
+                MessageBoxAction.Reject => MessageBoxResult.No,
                 _ => throw new ArgumentOutOfRangeException(),
             };
         }
@@ -238,8 +246,8 @@ namespace AutoCheckin
         {
             return Program.DefaultMessageBoxAction switch
             {
-                Program.MessageBoxAction.None => MessageBox.Show(text, title, MessageBoxButton.OK),
-                Program.MessageBoxAction.Accept or Program.MessageBoxAction.Reject => MessageBoxResult.None,
+                MessageBoxAction.None => MessageBox.Show(text, title, MessageBoxButton.OK),
+                MessageBoxAction.Accept or MessageBoxAction.Reject => MessageBoxResult.None,
                 _ => throw new ArgumentOutOfRangeException(),
             };
         }
