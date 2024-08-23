@@ -30,7 +30,7 @@ namespace AutoCheckin.Games
             {
                 return true;
             }
-            await Logger.Log($"Checking into {ClassName}...", Verbosity.Detail);
+            await Logger.Log($"Checking into {ClassName}...", Verbosity.Silent);
             if (!MainManager.DailyToken.IsValid)
             {
                 await Logger.Log($"Token for {ClassName} is not valid!", Verbosity.Error);
@@ -79,31 +79,59 @@ namespace AutoCheckin.Games
                 return;
             }
 
-            await Logger.Log($"Redeeming codes for {ClassName}...", Verbosity.Detail);
             var codes = await GetRedeemCodes();
-            var enabledRegions = settings.GetEnabledRegions();
+            await Logger.Log($"Checking {codes.Length} codes for {ClassName}...", Verbosity.Silent);
+            var enabledRegions = settings.GetEnabledRegions().ToArray();
 
             if (!MainManager.TriedCodes.TryGetValue(ClassKey, out var oldCodesByRegion))
             {
                 MainManager.TriedCodes[ClassKey] = oldCodesByRegion = new();
             }
             var cookie = MainManager.GiftToken.MakeCookie();
-            foreach (var settingRegion in enabledRegions)
+
+            var total = codes.LongLength * enabledRegions.Length;
+            long triedCodesCount = 0;
+
+            try
             {
-                await Logger.Log($"Redeeming codes in region '{settingRegion}'...", Verbosity.Detail);
-                if (!oldCodesByRegion.TryGetValue(settingRegion.RegionKey, out var oldCodes))
+                await PrintProgress(0, 1, false);
+
+                for (int i = 0; i < enabledRegions.Length; i++)
                 {
-                    oldCodesByRegion[settingRegion.RegionKey] = oldCodes = new();
+                    var settingRegion = enabledRegions[i];
+                    if (!oldCodesByRegion.TryGetValue(settingRegion.RegionKey, out var oldCodes))
+                    {
+                        oldCodesByRegion[settingRegion.RegionKey] = oldCodes = new();
+                    }
+                    triedCodesCount = await RedeemCodes(cookie, settingRegion, codes, oldCodes, triedCodesCount, total);
                 }
-                await RedeemCodes(cookie, settingRegion, codes, oldCodes);
+            }
+            finally
+            {
+                await Console.Out.WriteLineAsync();
             }
         }
 
-        async Task RedeemCodes(string cookie, RegionUID settingRegion, string[] codes, List<string> oldCodes)
+        async Task PrintProgress(long triedCodesCount, long total, bool clear=true)
+        {
+            if (MainManager.Verbosity >= Verbosity.PartialDebug)
+            {
+                return;
+            }
+            if (clear)
+            {
+                Utils.ClearCurrentConsoleLine();
+            }
+            await Console.Out.WriteAsync($"{Logger.DateNow} Progress: {triedCodesCount / (double)total * 100:0.##}%");
+        }
+
+        async Task<long> RedeemCodes(string cookie, RegionUID settingRegion, string[] codes, List<string> oldCodes, long triedCodesCount, long total)
         {
             var region = SettingRegionToUrlRegion(settingRegion.RegionKey);
-            foreach (var code in codes)
+            for (int i = 0; i < codes.Length; i++)
             {
+                triedCodesCount++;
+                var code = codes[i];
                 if (oldCodes.Contains(code))
                 {
                     continue;
@@ -120,7 +148,9 @@ namespace AutoCheckin.Games
                 await Logger.Log(response, Verbosity.FullDebug);
                 oldCodes.Add(code);
                 Thread.Sleep(5000);
+                await PrintProgress(triedCodesCount, total);
             }
+            return triedCodesCount;
         }
 
         internal protected BaseGame(MainManager mainManager)

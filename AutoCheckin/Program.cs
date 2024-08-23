@@ -3,8 +3,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Windows;
 using Updater;
 
 namespace AutoCheckin

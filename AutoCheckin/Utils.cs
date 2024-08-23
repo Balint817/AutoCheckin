@@ -8,6 +8,13 @@ namespace AutoCheckin
 {
     public static class Utils
     {
+        public static void ClearCurrentConsoleLine()
+        {
+            int currentLineCursor = Console.CursorTop;
+            Console.SetCursorPosition(0, Console.CursorTop);
+            Console.Write(new string(' ', Console.BufferWidth));
+            Console.SetCursorPosition(0, currentLineCursor);
+        }
         static Dictionary<MethodInfo, dynamic> _delegateCache = new();
         static Type[] _actionTypes = Enumerable.Range(1, 16).Select(x => Type.GetType("System.Action`"+x, true)).ToArray()!;
         static Type[] _funcTypes = Enumerable.Range(1, 17).Select(x => Type.GetType("System.Func`" + x, true)).ToArray()!;

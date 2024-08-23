@@ -12,12 +12,12 @@ namespace AutoCheckin
             message = source?.ToString();
             return message is not null;
         }
-        static Verbosity logVerbosity => (Program.MainManager?.VerbosityString is null ? Verbosity.Detail : Program.MainManager.Verbosity);
+        public static Verbosity logVerbosity => (Program.MainManager?.VerbosityString is null ? Verbosity.Detail : Program.MainManager.Verbosity);
         static FileStream? logStream;
         static StreamWriter LogWriter => new(new NonClosingStreamWrapper(logStream));
-        static readonly string DateFormat = "[yy-MM-d H:mm:ss]";
-        static string DateNow => DateTime.Now.ToString(DateFormat);
-        static string? ConstructMessage(params string[] args)
+        public static readonly string DateFormat = "[yy-MM-d H:mm:ss]";
+        public static string DateNow => DateTime.Now.ToString(DateFormat);
+        public static string? ConstructMessage(params string[] args)
         {
             ArgumentNullException.ThrowIfNull(args, nameof(args));
 

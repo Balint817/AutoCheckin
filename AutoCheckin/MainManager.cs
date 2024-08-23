@@ -13,6 +13,11 @@ namespace AutoCheckin
     public class MainManager
     {
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+        public MainManager()
+        {
+            PartialInit().Wait();
+        }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
         [JsonPropertyName("dailyToken")]
         public DailyToken DailyToken { get; set; }
@@ -46,14 +51,9 @@ namespace AutoCheckin
         private bool _initFinished;
         [JsonIgnore]
         public CodeRegionsByGame TriedCodes { get; set; }
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-        public async Task Init()
-        {
-            if (_initFinished)
-            {
-                throw new InvalidOperationException();
-            }
 
+        public async Task PartialInit()
+        {
             DailyToken ??= new();
             DailyToken.EnsureNotNull();
 
@@ -74,6 +74,15 @@ namespace AutoCheckin
             AutoCloseOnSuccess ??= true;
 
             await EnsureDefaults();
+        }
+        public async Task Init()
+        {
+            if (_initFinished)
+            {
+                throw new InvalidOperationException();
+            }
+
+            await PartialInit();
 
             await Logger.Log("Instantiating game scripts...", Verbosity.Detail);
 
@@ -164,7 +173,14 @@ namespace AutoCheckin
                     }
                     if (findInvalidUIDs.Any())
                     {
-                        DailyToken = await TokenLoader.GetDailyCookiesAndUids(findInvalidUIDs) ?? throw new NullReferenceException();
+                        try
+                        {
+                            DailyToken = await TokenLoader.GetDailyCookiesAndUids(findInvalidUIDs) ?? throw new NullReferenceException();
+                        }
+                        finally
+                        {
+                            findInvalidUIDs = Array.Empty<BaseGame>();
+                        }
                     }
                     else
                     {
@@ -240,7 +256,6 @@ namespace AutoCheckin
                     exitAfter = true;
                 }
             }
-
 
             await Logger.Log("Rewriting settings...", Verbosity.Detail);
 
@@ -397,7 +412,6 @@ namespace AutoCheckin
                     }
                 }
             }
-
             if (anyRedeem)
             {
                 await Logger.Log($"Saving tried codes...", Verbosity.Detail);

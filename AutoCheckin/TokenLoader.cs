@@ -226,14 +226,6 @@ namespace AutoCheckin
                 {
                     await task;
                 }
-                try
-                {
-                    _ = context.Pages;
-                }
-                catch (ObjectDisposedException)
-                {
-                    context = await browser.NewContextAsync();
-                }
                 if (page.IsClosed)
                 {
                     page = await context.NewPageAsync();
