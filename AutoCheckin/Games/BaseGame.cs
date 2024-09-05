@@ -152,7 +152,7 @@ namespace AutoCheckin.Games
                 HoyoResponse? hoyoResponse = null;
                 try
                 {
-                    hoyoResponse = JsonSerializer.Deserialize<HoyoResponse>(responseBody)!;
+                    hoyoResponse = JsonSerializer.Deserialize<HoyoResponse>(responseBody, Program.JsonOptions)!;
                     if (hoyoResponse?.IsMalformed ?? true)
                     {
                         throw new RequestMalformedException();

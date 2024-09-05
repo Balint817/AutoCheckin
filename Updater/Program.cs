@@ -27,7 +27,7 @@ namespace Updater
         internal static string[] OriginalArgs { get; private set; } = Array.Empty<string>();
         static async Task Main(string[] args)
         {
-            Environment.CurrentDirectory = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule!.FileName!)!;
+            Environment.CurrentDirectory = Path.GetDirectoryName(Environment.ProcessPath!)!;
             try
             {
                 await WrapMain(args);
@@ -165,7 +165,7 @@ namespace Updater
             var responseMsg = await client.SendAsync(requestMsg);
             var responseBody = await responseMsg.Content.ReadAsStringAsync();
             await Console.Out.WriteLineAsync(responseBody);
-            var responseJson = JsonSerializer.Deserialize<GithubResponse[]>(responseBody)!;
+            var responseJson = JsonSerializer.Deserialize<GithubResponse[]>(responseBody, Values.JsonOptions)!;
             var latestRelease = responseJson[0];
             var updateVersion = new Version(latestRelease.TagName);
 
@@ -184,7 +184,7 @@ namespace Updater
                     for (var i = 0; i < 1; i++)
                     {
 
-                        settingsJsonObj = JsonSerializer.Deserialize<JsonObject>(await File.ReadAllTextAsync(Values.SettingsPath))!;
+                        settingsJsonObj = JsonSerializer.Deserialize<JsonObject>(await File.ReadAllTextAsync(Values.SettingsPath), Values.JsonOptions)!;
                         // let it throw nullref if it is, since then we need to re-write it anyway
                         if (settingsJsonObj.TryGetPropertyValue(Values.LastVersionKey, out var node))
                         {

@@ -82,7 +82,7 @@ namespace AutoCheckin
         }
         static async Task Main(string[] args)
         {
-            Environment.CurrentDirectory = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule!.FileName!)!;
+            Environment.CurrentDirectory = Path.GetDirectoryName(Environment.ProcessPath!)!;
             if (args.Contains("-help"))
             {
                 await Console.Out.WriteLineAsync("-help       Displays this menu");
@@ -188,6 +188,11 @@ namespace AutoCheckin
                 {
                     await Logger.Log("Encountered an error while reading settings.", Verbosity.Silent);
                 }
+                if (error == null)
+                {
+                    await Logger.Log("Couldn't find settings.json", Verbosity.Silent);
+                    await Logger.Log("If this was your first launch, you will need to exit the program and edit the newly created file.", Verbosity.Silent);
+                }
                 try
                 {
                     await File.WriteAllTextAsync(SettingsPath, JsonSerializer.Serialize(MainManager, JsonOptions));
@@ -197,11 +202,6 @@ namespace AutoCheckin
                 {
                     await Logger.Log(ex.ToString(), Verbosity.Error);
                     await Logger.Log($"Failed to re-write settings to '{SettingsPath}'. You will have to fix the file manually.", Verbosity.Silent);
-                }
-                if (error == null)
-                {
-                    await Logger.Log("Couldn't find settings.json", Verbosity.Silent);
-                    await Logger.Log("If this was your first launch, you will need to exit the program and edit the newly created file.", Verbosity.Silent);
                 }
                 await Utils.ExitFunction(false);
                 return;
