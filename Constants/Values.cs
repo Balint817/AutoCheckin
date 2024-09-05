@@ -8,7 +8,8 @@ namespace Constants
         public const string SettingsPath = "settings.json";
         public const string TriedCodesPath = "triedCodes.json";
         public const string LastVersionKey = "lastSkippedVersion";
-        public static JsonSerializerOptions JsonOptions = new()
+        public const string UpdateFolder = "download";
+        public static readonly JsonSerializerOptions JsonOptions = new()
         {
             AllowTrailingCommas = true,
             NumberHandling = JsonNumberHandling.Strict,

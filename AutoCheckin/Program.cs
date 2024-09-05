@@ -96,6 +96,7 @@ namespace AutoCheckin
                 await Console.Out.WriteLineAsync("If popups are rejected, 'Press enter to exit' is also skipped");
                 await Console.Out.WriteLineAsync();
                 await Console.Out.WriteLineAsync("-updated    Used internally after an update");
+                await Console.Out.WriteLineAsync("-endupdate  Used internally after '-update'");
                 await Utils.ExitFunction(false);
                 return;
             }
@@ -147,7 +148,33 @@ namespace AutoCheckin
 
             if (args.Contains("-updated"))
             {
+                while (true)
+                {
+                    try
+                    {
+                        using var fs = File.OpenWrite("Updater.exe");
+                        break;
+                    }
+                    catch (Exception)
+                    {
+
+                    }
+                    await Task.Delay(10);
+                }
+                foreach (var filePath in Directory.EnumerateFiles(Values.UpdateFolder))
+                {
+                    var filename = Path.GetFileName(filePath);
+                    if (!filename.ToLowerInvariant().StartsWith("updater."))
+                    {
+                        continue;
+                    }
+                    File.Move(filePath, Path.GetFileName(filePath), true);
+                }
                 await Console.Out.WriteLineAsync("Successfully installed update.");
+                if (args.Contains("-endupdate"))
+                {
+                    return;
+                }
             }
             else
             {

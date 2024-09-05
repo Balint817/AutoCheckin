@@ -79,13 +79,13 @@ namespace Updater
 
         private static async Task Update()
         {
-            if (File.Exists("download"))
+            if (File.Exists(Values.UpdateFolder))
             {
-                File.Delete("download");
+                File.Delete(Values.UpdateFolder);
             }
-            if (!Directory.Exists("download"))
+            if (!Directory.Exists(Values.UpdateFolder))
             {
-                Directory.CreateDirectory("download");
+                Directory.CreateDirectory(Values.UpdateFolder);
             }
             var client = new HttpClient();
             var requestMsg = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
@@ -93,22 +93,17 @@ namespace Updater
             var responseMsg = await client.SendAsync(requestMsg);
             responseMsg.EnsureSuccessStatusCode();
             var responseStream = await responseMsg.Content.ReadAsStreamAsync();
-            await Console.Out.WriteLineAsync("1");
             if (File.Exists("download.zip"))
             {
                 File.Delete("download.zip");
             }
-            await Console.Out.WriteLineAsync("2");
             using (var fileStream = File.Create("download.zip"))
             {
                 await responseStream.CopyToAsync(fileStream);
                 await fileStream.FlushAsync();
             }
-            await Console.Out.WriteLineAsync("3");
-            System.IO.Compression.ZipFile.ExtractToDirectory("download.zip", "download", true);
-            await Console.Out.WriteLineAsync("4");
+            System.IO.Compression.ZipFile.ExtractToDirectory("download.zip", Values.UpdateFolder, true);
             File.Delete("download.zip");
-            await Console.Out.WriteLineAsync("5");
             while (true)
             {
                 try
@@ -122,7 +117,7 @@ namespace Updater
                 }
                 await Task.Delay(10);
             }
-            foreach (var filePath in Directory.EnumerateFiles("download"))
+            foreach (var filePath in Directory.EnumerateFiles(Values.UpdateFolder))
             {
                 var filename = Path.GetFileName(filePath);
                 if (filename.ToLowerInvariant().StartsWith("updater."))
@@ -131,25 +126,25 @@ namespace Updater
                 }
                 File.Move(filePath, Path.GetFileName(filePath), true);
             }
-            await Console.Out.WriteLineAsync("6");
-            if (RestartAfter)
-            {
-                var psi = new ProcessStartInfo("AutoCheckin.exe")
-                {
-                    UseShellExecute = true
-                };
-                if (OriginalArgs is not null)
-                {
-                    foreach (var item in OriginalArgs)
-                    {
-                        psi.ArgumentList.Add(item);
-                    }
-                }
-                psi.ArgumentList.Add("-updated");
-                Process.Start(psi);
-                return;
 
+            var psi = new ProcessStartInfo("AutoCheckin.exe")
+            {
+                UseShellExecute = true
+            };
+            if (OriginalArgs is not null)
+            {
+                foreach (var item in OriginalArgs)
+                {
+                    psi.ArgumentList.Add(item);
+                }
             }
+            psi.ArgumentList.Add("-updated");
+            if (!RestartAfter)
+            {
+                psi.ArgumentList.Add("-endupdate");
+            }
+            Process.Start(psi);
+            return;
         }
 
         static async Task<UpdaterExitCode> UpdateCheck()
@@ -169,8 +164,11 @@ namespace Updater
             var latestRelease = responseJson[0];
             var updateVersion = new Version(latestRelease.TagName);
 
+            await Console.Out.WriteLineAsync($"Current version: {currentVersion}");
+            await Console.Out.WriteLineAsync($"Available: {updateVersion}");
             if (updateVersion <= currentVersion)
             {
+                await Console.Out.WriteLineAsync("Up to date.");
                 return UpdaterExitCode.UpToDate;
             }
 
@@ -213,8 +211,7 @@ namespace Updater
                     changed = true;
                 }
             }
-            await Console.Out.WriteLineAsync(lastSkippedVersion.ToString());
-            await Console.Out.WriteLineAsync(updateVersion.ToString());
+            await Console.Out.WriteLineAsync($"Last skipped version: {lastSkippedVersion}");
             if (lastSkippedVersion >= updateVersion)
             {
                 return UpdaterExitCode.UpdateSkipped;
