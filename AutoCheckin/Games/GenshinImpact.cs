@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿using HtmlAgilityPack;
+using System.Net.Http.Json;
 
 namespace AutoCheckin.Games
 {
@@ -47,8 +48,30 @@ namespace AutoCheckin.Games
         public override string CodeUrl => "https://sg-hk4e-api.hoyoverse.com/common/apicdkey/api/webExchangeCdkey?uid={0}&region={1}&lang=en&cdkey={2}&game_biz=hk4e_global&sLangKey=en-us";
         public override async Task<string[]> GetRedeemCodes()
         {
-            var response = await Program.Client.GetAsync("https://raw.githubusercontent.com/themojache/ScrapeAction/main/valid.json");
-            return (await response.Content.ReadFromJsonAsync<string[]>(Program.JsonOptions))!;
+            IEnumerable<string> result = Enumerable.Empty<string>();
+            // fandom
+            {
+                var responseMsg = await Program.Client.GetAsync("https://antifandom.com/genshin-impact/wiki/Promotional_Code");
+                var responseBody = await responseMsg.Content.ReadAsStringAsync();
+                var htmlDocument = new HtmlDocument();
+                htmlDocument.LoadHtml(responseBody);
+                // CSS equivalent: ".table-scroller tr td:first-child code"
+                var validCodeXPath = ".//*[contains(concat(\" \",normalize-space(@class),\" \"),\" table-scroller \")]//tr//td[not(preceding-sibling::*)]//code";
+                var tableRows = htmlDocument.DocumentNode.SelectNodes(validCodeXPath);
+                var codes = tableRows.Select(x => x.InnerText.Trim()).ToArray();
+                result = result.Concat(codes);
+            }
+
+            // github
+            {
+
+                var githubResponse = await Program.Client.GetAsync("https://raw.githubusercontent.com/themojache/ScrapeAction/main/valid.json");
+                var codes = await githubResponse.Content.ReadFromJsonAsync<string[]>(Program.JsonOptions) ?? Array.Empty<string>();
+                result = result.Concat(codes);
+            }
+
+            return result.ToArray();
         }
     }
+
 }

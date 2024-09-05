@@ -1,4 +1,5 @@
-﻿using Constants;
+﻿using AutoCheckin.Enums;
+using Constants;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;

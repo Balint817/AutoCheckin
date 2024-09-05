@@ -1,7 +1,10 @@
-﻿using AutoCheckin.Objects;
+﻿using AutoCheckin.Enums;
+using AutoCheckin.Exceptions;
+using AutoCheckin.Objects;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace AutoCheckin.Games
 {
@@ -40,7 +43,7 @@ namespace AutoCheckin.Games
             var requestMsg = GetBaseRequest(HttpMethod.Post, cookie, DailyOrigin, DailyReferer);
             requestMsg.RequestUri = new Uri(DailyApiUrl);
             var responseMsg = await Program.Client.SendAsync(requestMsg);
-            var response = await responseMsg.Content.ReadFromJsonAsync<DailyResponse>(Program.JsonOptions);
+            var response = await responseMsg.Content.ReadFromJsonAsync<HoyoResponse>(Program.JsonOptions);
             return response?.IsSuccess ?? false;
         }
 
@@ -144,8 +147,39 @@ namespace AutoCheckin.Games
                 requestMsg.RequestUri = new Uri(url);
                 await TransformCodeRedeemMessage(requestMsg);
                 var responseMsg = await Program.Client.SendAsync(requestMsg);
-                var response = await responseMsg.Content.ReadAsStringAsync();
-                await Logger.Log(response, Verbosity.FullDebug);
+                var responseBody = await responseMsg.Content.ReadAsStringAsync();
+                await Logger.Log(responseBody, Verbosity.FullDebug);
+                HoyoResponse? hoyoResponse = null;
+                try
+                {
+                    hoyoResponse = JsonSerializer.Deserialize<HoyoResponse>(responseBody)!;
+                    if (hoyoResponse?.IsMalformed ?? true)
+                    {
+                        throw new RequestMalformedException();
+                    }
+                    else if (hoyoResponse.IsBusy)
+                    {
+                        throw new SystemBusyException();
+                    }
+                    else if (hoyoResponse.NotLoggedIn)
+                    {
+                        throw new InvalidTokenException();
+                    }
+                    else if (hoyoResponse.IsCaptchaBlock)
+                    {
+                        throw new CaptchaBlockException();
+                    }
+                    else if (hoyoResponse.MissingRegion)
+                    {
+                        throw new InvalidRegionException(settingRegion.RegionKey);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await Console.Out.WriteLineAsync();
+                    await Logger.Log(responseBody, Verbosity.Error);
+                    throw ex;
+                }
                 oldCodes.Add(code);
                 Thread.Sleep(5000);
                 await PrintProgress(triedCodesCount, total);

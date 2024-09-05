@@ -1,4 +1,6 @@
-﻿using AutoCheckin.Games;
+﻿using AutoCheckin.Enums;
+using AutoCheckin.Exceptions;
+using AutoCheckin.Games;
 using AutoCheckin.Objects;
 using Constants;
 using System.Diagnostics.CodeAnalysis;
@@ -324,7 +326,7 @@ namespace AutoCheckin
             await Logger.Log("Running scripts...", Verbosity.Detail);
 
             var failedCheckin = new List<BaseGame>();
-            var failedRedeems = new List<BaseGame>();
+            var failedRedeems = new List<Tuple<BaseGame, Exception>>();
             bool anyCheckin = false;
             bool anyRedeem = false;
             foreach (var game in Games)
@@ -372,7 +374,8 @@ namespace AutoCheckin
                 {
                     await Logger.Log(ex.ToString(), Verbosity.Error);
                     await Logger.Log($"Encountered an error while redeeming codes for {game.ClassName}", Verbosity.Silent);
-                    failedRedeems.Add(game);
+
+                    failedRedeems.Add(new(game, ex));
                 }
             }
             await Logger.Log($"-------------", Verbosity.Silent);
@@ -412,6 +415,7 @@ namespace AutoCheckin
                     }
                 }
             }
+
             if (anyRedeem)
             {
                 await Logger.Log($"Saving tried codes...", Verbosity.Detail);
@@ -426,6 +430,69 @@ namespace AutoCheckin
                     await Logger.Log(ex.ToString(), Verbosity.Error);
                     await Logger.Log("Failed to write tried codes to file", Verbosity.Silent);
                 }
+            }
+
+            bool fatalRedeemFailures = false;
+            bool settingsChanged = false;
+            foreach (var kv in failedRedeems)
+            {
+                var game = kv.Item1;
+                var boxedEx = kv.Item2;
+                switch (boxedEx)
+                {
+                    case CaptchaBlockException ex:
+                        await Logger.Log($"Code redeem for {game.ClassName} was blocked by a captcha check", Verbosity.Silent);
+                        fatalRedeemFailures = true;
+                        break;
+                    case InvalidRegionException ex:
+                        await Logger.Log($"Failed to redeem codes for {game.ClassName} because an account did not exist in the given region.", Verbosity.Silent);
+                        await Logger.Log($"This could be also be a sign that the wrong UID is set or the token doesn't match.", Verbosity.Silent);
+
+                        fatalRedeemFailures = true;
+                        break;
+                    case InvalidTokenException ex:
+                        await Logger.Log($"Failed to redeem codes for {game.ClassName} because the user wasn't logged in.", Verbosity.Silent);
+                        await Logger.Log($"All tokens and UIDs were automatically invalidated.", Verbosity.Silent);
+                        await Logger.Log($"You will need to complete setup again on the next launch.", Verbosity.Silent);
+                        var settings = AllSettings[game.ClassKey];
+                        settings.InvalidateRegions();
+                        DailyToken.Reset();
+                        GiftToken.Reset();
+
+                        fatalRedeemFailures = true;
+                        settingsChanged = true;
+                        break;
+                    case RequestMalformedException ex:
+                        await Logger.Log($"Failed to redeem codes for {game.ClassName} because the server returned an error.", Verbosity.Silent);
+                        fatalRedeemFailures = true;
+                        break;
+                    case SystemBusyException ex:
+                        await Logger.Log($"Failed to redeem codes for {game.ClassName} because the server is currently unavailable (or the request is malformed).", Verbosity.Silent);
+                        fatalRedeemFailures = true;
+                        break;
+                    default:
+                        break;
+                }
+            }
+            if (settingsChanged)
+            {
+                await Logger.Log("Rewriting settings...", Verbosity.Detail);
+
+                try
+                {
+                    var serialized = JsonSerializer.Serialize(this, Program.JsonOptions);
+                    await File.WriteAllTextAsync(Program.SettingsPath, serialized);
+                }
+                catch (Exception ex)
+                {
+                    await Logger.Log(ex.ToString(), Verbosity.Error);
+                    await Logger.Log("Failed to re-write settings!", Verbosity.Silent);
+                    await Utils.ExitFunction(true);
+                }
+            }
+            if (fatalRedeemFailures)
+            {
+                await Utils.ExitFunction(true);
             }
         }
     }

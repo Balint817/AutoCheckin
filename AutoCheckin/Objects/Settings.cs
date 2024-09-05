@@ -20,6 +20,14 @@ namespace AutoCheckin.Objects
                 }
             }
         }
+
+        public void InvalidateRegions()
+        {
+            foreach (var region in Regions)
+            {
+                region.UID = string.Empty;
+            }
+        }
         public void EnsureNotNull()
         {
             Regions ??= new();

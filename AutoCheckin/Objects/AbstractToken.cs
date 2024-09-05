@@ -55,5 +55,12 @@ namespace AutoCheckin.Objects
             }
             return sb.ToString();
         }
+
+        public void Reset()
+        {
+            Token = "";
+            Mid = "";
+            ID = "";
+        }
     }
 }

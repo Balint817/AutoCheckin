@@ -1,4 +1,4 @@
-﻿namespace AutoCheckin
+﻿namespace AutoCheckin.Enums
 {
     public enum Verbosity
     {

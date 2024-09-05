@@ -1,4 +1,5 @@
-﻿using AutoCheckin.Games;
+﻿using AutoCheckin.Enums;
+using AutoCheckin.Games;
 using AutoCheckin.Objects;
 using Microsoft.Playwright;
 using System.IO;

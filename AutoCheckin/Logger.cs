@@ -1,4 +1,5 @@
-﻿using MiscUtil.IO;
+﻿using AutoCheckin.Enums;
+using MiscUtil.IO;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
