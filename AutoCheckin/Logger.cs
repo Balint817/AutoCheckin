@@ -3,6 +3,7 @@ using MiscUtil.IO;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
+using System.Xml.Linq;
 
 namespace AutoCheckin
 {
@@ -13,11 +14,13 @@ namespace AutoCheckin
             message = source?.ToString();
             return message is not null;
         }
-        public static Verbosity logVerbosity => (Program.MainManager?.VerbosityString is null ? Verbosity.Detail : Program.MainManager.Verbosity);
+        public static Verbosity LogVerbosity => (Program.MainManager?.VerbosityString is null ? Verbosity.Detail : Program.MainManager.Verbosity);
         static FileStream? logStream;
         static StreamWriter LogWriter => new(new NonClosingStreamWrapper(logStream));
         public static readonly string DateFormat = "[yy-MM-d H:mm:ss]";
         public static string DateNow => DateTime.Now.ToString(DateFormat);
+
+        public static readonly ConsoleColor DefaultColor = Console.ForegroundColor;
         public static string? ConstructMessage(params string[] args)
         {
             ArgumentNullException.ThrowIfNull(args, nameof(args));
@@ -53,20 +56,23 @@ namespace AutoCheckin
         }
         internal static async Task Init()
         {
-            if (logVerbosity == Verbosity.Off)
+            if (LogVerbosity == Verbosity.Off)
             {
                 return;
             }
             logStream = new FileStream("Latest.log", FileMode.Create, FileAccess.ReadWrite, FileShare.Read);
             await Log($"Logger initialized.", verbosity: Verbosity.Detail);
         }
-        public static async Task LogDirect(string message, Verbosity verbosity)
+        public static async Task LogDirect(string message, Verbosity verbosity, ConsoleColor? consoleColor = null)
         {
             ArgumentNullException.ThrowIfNull(message, nameof(message));
-            if (verbosity > logVerbosity)
+            if (verbosity > LogVerbosity)
             {
                 return;
             }
+            var color = consoleColor ?? DefaultColor;
+            var originalColor = Console.ForegroundColor;
+            Console.ForegroundColor = color;
             try
             {
                 await Console.Out.WriteLineAsync(message);
@@ -77,26 +83,30 @@ namespace AutoCheckin
             {
                 //ignore
             }
+            finally
+            {
+                Console.ForegroundColor = originalColor;
+            }
         }
         /// <summary>
         /// Unlike the others, this will ignore the log request if the object is null.
         /// </summary>
-        public static async Task LogDirect(object message, Verbosity verbosity)
+        public static async Task LogDirect(object message, Verbosity verbosity, ConsoleColor? color = null)
         {
             if (TryToString(message, out var log))
             {
-                await LogDirect(log, verbosity);
+                await LogDirect(log, verbosity, color);
             }
         }
-        internal static async Task Log(string message, Verbosity verbosity, string[]? prefixNamespaces = null, string[]? postfixNamespaces = null)
+        internal static async Task Log(string message, Verbosity verbosity, ConsoleColor? color = null, string[] ? namespaces = null)
         {
             ArgumentNullException.ThrowIfNull(message, nameof(message));
-            if (verbosity > logVerbosity)
+            if (verbosity > LogVerbosity)
             {
                 return;
             }
-            var log = ConstructMessage(Utils.AppendElement(postfixNamespaces, message).PrependElements(prefixNamespaces))!;
-            await LogDirect(log, verbosity);
+            var log = ConstructMessage(namespaces.AppendElement(message))!;
+            await LogDirect(log, verbosity, color);
         }
     }
 }

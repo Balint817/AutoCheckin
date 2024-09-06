@@ -1,5 +1,6 @@
 ﻿using HtmlAgilityPack;
 using System.Net.Http.Json;
+using System.Security.Policy;
 
 namespace AutoCheckin.Games
 {
@@ -51,10 +52,8 @@ namespace AutoCheckin.Games
             IEnumerable<string> result = Enumerable.Empty<string>();
             // fandom
             {
-                var responseMsg = await Program.Client.GetAsync("https://antifandom.com/genshin-impact/wiki/Promotional_Code");
-                var responseBody = await responseMsg.Content.ReadAsStringAsync();
-                var htmlDocument = new HtmlDocument();
-                htmlDocument.LoadHtml(responseBody);
+                var url = "https://antifandom.com/genshin-impact/wiki/Promotional_Code";
+                var htmlDocument = await Utils.GetHtml(url);
                 // CSS equivalent: ".table-scroller tr td:first-child code"
                 var validCodeXPath = ".//*[contains(concat(\" \",normalize-space(@class),\" \"),\" table-scroller \")]//tr//td[not(preceding-sibling::*)]//code";
                 var tableRows = htmlDocument.DocumentNode.SelectNodes(validCodeXPath);

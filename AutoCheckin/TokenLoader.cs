@@ -206,7 +206,7 @@ namespace AutoCheckin
 
             if (!File.Exists(playwright.Chromium.ExecutablePath))
             {
-                await Logger.Log("Preparing for first launch...", Verbosity.Silent);
+                await Logger.Log("Preparing for first launch...", Verbosity.Silent, color: ConsoleColor.Magenta);
                 await Utils.ExecuteScript(Path.GetFullPath("playwright.ps1"), "install");
             }
 

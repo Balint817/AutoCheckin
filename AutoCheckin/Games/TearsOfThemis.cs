@@ -42,10 +42,7 @@ namespace AutoCheckin.Games
         {
             var result = new List<string>();
             var url = "https://tot.wiki/wiki/Redeem_Code";
-            var responseMsg = await Program.Client.GetAsync(url);
-            var responseBody = await responseMsg.Content.ReadAsStringAsync();
-            var htmlDocument = new HtmlDocument();
-            htmlDocument.LoadHtml(responseBody);
+            var htmlDocument = await Utils.GetHtml(url);
             // CSS equivalent: ".wikitable:first-of-type tr"
             var tableRowsXPath = ".//*[contains(concat(\" \",normalize-space(@class),\" \"),\" wikitable \")][1]//tr";
             var tableRows = htmlDocument.DocumentNode.SelectNodes(tableRowsXPath);

@@ -30,12 +30,13 @@ namespace AutoCheckin.Objects
         [JsonIgnore]
         public bool IsSuccess => (ReturnCode == -5003) || (!IsError && !IsCaptchaBlock && !IsBusy && !IsMalformed && !NotLoggedIn && !MissingRegion);
         [JsonIgnore]
-        public bool IsBusy => (ReturnCode == -1009) || (Message?.Contains("System busy", StringComparison.Ordinal) ?? false);
+        public bool IsBusy => CheckResponse(-1009, "System busy");
         [JsonIgnore]
-        public bool IsMalformed => (ReturnCode == -502) || (Message?.Contains("went wrong", StringComparison.Ordinal) ?? false);
+        public bool IsMalformed => CheckResponse(-502, "went wrong");
         [JsonIgnore]
-        public bool NotLoggedIn => (ReturnCode == -1071) || (Message?.Contains("log in ", StringComparison.Ordinal) ?? false);
+        public bool NotLoggedIn => CheckResponse(-1071, "log in ");
         [JsonIgnore]
-        public bool MissingRegion => (ReturnCode == -1075) || (Message?.Contains("Create a character first", StringComparison.Ordinal) ?? false);
+        public bool MissingRegion => CheckResponse(-1075, "Create a character first");
+        bool CheckResponse(int code, string substring) => (ReturnCode == code) || (Message?.Contains(substring, StringComparison.Ordinal) ?? false);
     }
 }

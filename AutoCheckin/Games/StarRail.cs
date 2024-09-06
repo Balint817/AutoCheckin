@@ -49,10 +49,7 @@ namespace AutoCheckin.Games
         public override async Task<string[]> GetRedeemCodes()
         {
             var url = "https://www.pcgamer.com/honkai-star-rail-codes/";
-            var responseMsg = await Program.Client.GetAsync(url);
-            var responseBody = await responseMsg.Content.ReadAsStringAsync();
-            var htmlDocument = new HtmlDocument();
-            htmlDocument.LoadHtml(responseBody);
+            var htmlDocument = await Utils.GetHtml(url);
             // CSS equivalent: "ul:has(strong):first-of-type strong"
             var validCodeXPath = ".//ul[count(.//strong) > 0][1]//strong";
             var tableRows = htmlDocument.DocumentNode.SelectNodes(validCodeXPath);

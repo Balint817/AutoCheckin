@@ -48,10 +48,7 @@ namespace AutoCheckin.Games
         public override async Task<string[]> GetRedeemCodes()
         {
             var url = "https://game8.co/games/Zenless-Zone-Zero/archives/435683";
-            var responseMsg = await Program.Client.GetAsync(url);
-            var responseBody = await responseMsg.Content.ReadAsStringAsync();
-            var htmlDocument = new HtmlDocument();
-            htmlDocument.LoadHtml(responseBody);
+            var htmlDocument = await Utils.GetHtml(url);
             // CSS equivalent: "ul.a-list:first-of-type .a-listItem .a-link:first-child"
             var validCodeXPath = ".//ul[contains(concat(\" \",normalize-space(@class),\" \"),\" a-list \")][1]//*[contains(concat(\" \",normalize-space(@class),\" \"),\" a-listItem \")]//*[contains(concat(\" \",normalize-space(@class),\" \"),\" a-link \")][not(preceding-sibling::*)]";
             var listItems = htmlDocument.DocumentNode.SelectNodes(validCodeXPath);

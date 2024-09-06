@@ -47,21 +47,21 @@ namespace AutoCheckin
             switch ((UpdaterExitCode)process.ExitCode)
             {
                 case UpdaterExitCode.UpToDate:
-                    await Logger.Log("Up to date.", Verbosity.Silent);
+                    await Logger.Log("Up to date.", Verbosity.Silent, color: ConsoleColor.Green);
                     if (exitAfter)
                     {
                         await Utils.ExitFunction(true);
                     }
                     break;
                 case UpdaterExitCode.UpdateSkipped:
-                    await Logger.Log("Update skipped.", Verbosity.Silent);
+                    await Logger.Log("Update skipped.", Verbosity.Silent, color: ConsoleColor.DarkMagenta);
                     if (exitAfter)
                     {
                         await Utils.ExitFunction(true);
                     }
                     break;
                 case UpdaterExitCode.Update:
-                    await Logger.Log("Update requested. Closing...", Verbosity.Silent);
+                    await Logger.Log("Update requested. Closing...", Verbosity.Silent, color: ConsoleColor.DarkMagenta);
                     startInfo.ArgumentList.Add("-forceupdate");
                     startInfo.ArgumentList.Add("--original");
                     foreach (var arg in programArgs)
@@ -72,7 +72,7 @@ namespace AutoCheckin
                     Environment.Exit(0);
                     break;
                 default:
-                    await Logger.Log("Encountered an error during the update check", Verbosity.Silent);
+                    await Logger.Log("Encountered an error during the update check", Verbosity.Silent, color: ConsoleColor.DarkRed);
                     if (exitAfter)
                     {
                         await Utils.ExitFunction(true);
@@ -205,7 +205,7 @@ namespace AutoCheckin
             }
             catch (Exception ex)
             {
-                await Logger.Log(ex.ToString(), Verbosity.Error);
+                await Logger.Log(ex.ToString(), Verbosity.Error, color: ConsoleColor.Red);
                 error = true;
                 MainManager = new();
             }
@@ -213,12 +213,12 @@ namespace AutoCheckin
             {
                 if (error == true)
                 {
-                    await Logger.Log("Encountered an error while reading settings.", Verbosity.Silent);
+                    await Logger.Log("Encountered an error while reading settings.", Verbosity.Silent, color: ConsoleColor.Red);
                 }
                 if (error == null)
                 {
-                    await Logger.Log("Couldn't find settings.json", Verbosity.Silent);
-                    await Logger.Log("If this was your first launch, you will need to exit the program and edit the newly created file.", Verbosity.Silent);
+                    await Logger.Log("Couldn't find settings.json", Verbosity.Silent, color: ConsoleColor.DarkYellow);
+                    await Logger.Log("If this was your first launch, you will need to exit the program and edit the newly created file.", Verbosity.Silent, color: ConsoleColor.DarkYellow);
                 }
                 try
                 {
@@ -227,8 +227,8 @@ namespace AutoCheckin
                 }
                 catch (Exception ex)
                 {
-                    await Logger.Log(ex.ToString(), Verbosity.Error);
-                    await Logger.Log($"Failed to re-write settings to '{SettingsPath}'. You will have to fix the file manually.", Verbosity.Silent);
+                    await Logger.Log(ex.ToString(), Verbosity.Error, color: ConsoleColor.Red);
+                    await Logger.Log($"Failed to re-write settings to '{SettingsPath}'. You will have to fix the file manually.", Verbosity.Silent, color: ConsoleColor.DarkRed);
                 }
                 await Utils.ExitFunction(false);
                 return;
@@ -240,8 +240,8 @@ namespace AutoCheckin
             }
             catch (Exception ex)
             {
-                await Logger.Log(ex.ToString(), Verbosity.Error);
-                await Logger.Log("Failed to initialize program.", Verbosity.Silent);
+                await Logger.Log(ex.ToString(), Verbosity.Error, color: ConsoleColor.Red);
+                await Logger.Log("Failed to initialize program.", Verbosity.Silent, color: ConsoleColor.DarkRed);
                 await Utils.ExitFunction(false);
                 return;
             }

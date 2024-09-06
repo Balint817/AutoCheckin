@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using HtmlAgilityPack;
+using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -6,6 +7,8 @@ using static System.Net.Mime.MediaTypeNames;
 
 namespace AutoCheckin
 {
+    public delegate Task AsyncAction();
+    public delegate Task<T> AsyncFunc<T>();
     public static class Utils
     {
         public static void ClearCurrentConsoleLine()
@@ -257,6 +260,15 @@ namespace AutoCheckin
                 MessageBoxAction.Accept or MessageBoxAction.Reject => MessageBoxResult.None,
                 _ => throw new ArgumentOutOfRangeException(),
             };
+        }
+
+        public static async Task<HtmlDocument> GetHtml(string url)
+        {
+            var responseMsg = await Program.Client.GetAsync(url);
+            var responseBody = await responseMsg.Content.ReadAsStringAsync();
+            var htmlDocument = new HtmlDocument();
+            htmlDocument.LoadHtml(responseBody);
+            return htmlDocument;
         }
     }
 }

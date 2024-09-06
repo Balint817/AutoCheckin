@@ -77,6 +77,54 @@ namespace AutoCheckin
 
             await EnsureDefaults();
         }
+
+        async Task GenericAskAction(string baseMsg, string msgExtend, string title, AsyncAction action)
+        {
+            var text = baseMsg;
+            await Logger.Log(text, Verbosity.Silent);
+            text += msgExtend;
+            var msgBoxResult = Utils.ShowQuestion(text, title);
+            if (msgBoxResult != MessageBoxResult.Yes)
+            {
+                throw new OperationCanceledException();
+            }
+            await action();
+        }
+
+        async Task<bool> GenericLogin(string baseMsg, string title, AsyncAction action)
+        {
+            var errMsgExtend = "\nDo you want to log in?";
+            try
+            {
+                await GenericAskAction(baseMsg, errMsgExtend, title, action);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                await Logger.Log("Operation was cancelled by the user.", Verbosity.Silent, color: ConsoleColor.DarkMagenta);
+            }
+            catch (Exception ex)
+            {
+                await Logger.Log(ex.ToString(), Verbosity.Error, color: ConsoleColor.Red);
+                await Logger.Log("Encountered an error during log-in process.", Verbosity.Silent, color: ConsoleColor.Red);
+            }
+            return false;
+
+        }
+        async Task InitTriedCodes()
+        {
+            TriedCodes = new();
+            try
+            {
+                await File.WriteAllTextAsync(Program.TriedCodesPath, "{}");
+            }
+            catch (Exception ex2)
+            {
+                await Logger.Log(ex2.ToString(), Verbosity.Error, color: ConsoleColor.Red);
+                await Logger.Log("Failed to write tried codes!", Verbosity.Silent, color: ConsoleColor.DarkRed);
+                await Utils.ExitFunction(true);
+            }
+        }
         public async Task Init()
         {
             if (_initFinished)
@@ -120,34 +168,14 @@ namespace AutoCheckin
             }
             catch (FileNotFoundException)
             {
-                await Logger.Log("Couldn't find tried codes. This is normal during first run.", Verbosity.Silent);
-                TriedCodes = new();
-                try
-                {
-                    await File.WriteAllTextAsync(Program.TriedCodesPath, "{}");
-                }
-                catch (Exception ex2)
-                {
-                    await Logger.Log(ex2.ToString(), Verbosity.Error);
-                    await Logger.Log("Failed to write tried codes!", Verbosity.Silent);
-                    await Utils.ExitFunction(true);
-                }
+                await Logger.Log("Couldn't find tried codes. This is normal during first run.", Verbosity.Silent, color: ConsoleColor.Red);
+                await InitTriedCodes();
             }
             catch (Exception ex)
             {
-                await Logger.Log(ex.ToString(), Verbosity.Error);
-                await Logger.Log("Failed to read tried codes. This may cause codes that have already been tried to be tried again.", Verbosity.Silent);
-                TriedCodes = new();
-                try
-                {
-                    await File.WriteAllTextAsync(Program.TriedCodesPath, "{}");
-                }
-                catch (Exception ex2)
-                {
-                    await Logger.Log(ex2.ToString(), Verbosity.Error);
-                    await Logger.Log("Failed to write tried codes!", Verbosity.Silent);
-                    await Utils.ExitFunction(true);
-                }
+                await Logger.Log(ex.ToString(), Verbosity.Error, color: ConsoleColor.Red);
+                await Logger.Log("Failed to read tried codes. This may cause codes that have already been tried to be tried again.", Verbosity.Silent, color: ConsoleColor.Red);
+                await InitTriedCodes();
             }
 
             await Logger.Log("Checking tokens...", Verbosity.Detail);
@@ -162,116 +190,65 @@ namespace AutoCheckin
 
             if (!DailyToken.IsValid && AllSettings.Values.Any(x => x.CheckinEnabled))
             {
-                try
+                var baseMsg = "Check-in is enabled, but the required tokens are missing.";
+                var title = "Missing daily token";
+                var invalidUidCopy = findInvalidUIDs;
+                AsyncAction loginAction = async () =>
                 {
-                    var text = "Check-in is enabled, but the required tokens are missing.";
-                    await Logger.Log(text, Verbosity.Silent);
-                    text += "\nDo you want to log in?";
-                    var title = "Missing daily token";
-                    var msgBoxResult = Utils.ShowQuestion(text, title);
-                    if (msgBoxResult != MessageBoxResult.Yes)
-                    {
-                        throw new OperationCanceledException();
-                    }
-                    if (findInvalidUIDs.Any())
+                    if (invalidUidCopy.Any())
                     {
                         try
                         {
-                            DailyToken = await TokenLoader.GetDailyCookiesAndUids(findInvalidUIDs) ?? throw new NullReferenceException();
+                            DailyToken = await TokenLoader.GetDailyCookiesAndUids(invalidUidCopy) ?? throw new NullReferenceException();
                         }
                         finally
                         {
-                            findInvalidUIDs = Array.Empty<BaseGame>();
+                            invalidUidCopy = Array.Empty<BaseGame>();
                         }
                     }
                     else
                     {
                         DailyToken = await TokenLoader.GetDailyCookies() ?? throw new NullReferenceException();
                     }
-                }
-                catch (OperationCanceledException)
+                };
+                var success = await GenericLogin(baseMsg, title, loginAction);
+                if (!success)
                 {
-                    await Logger.Log("Operation was cancelled by the user.", Verbosity.Silent);
-                    exitAfter = true;
-                }
-                catch (Exception ex)
-                {
-                    await Logger.Log(ex.ToString(), Verbosity.Error);
-                    await Logger.Log("Encountered an error during log-in process.", Verbosity.Silent);
                     exitAfter = true;
                 }
             }
 
             if (findInvalidUIDs.Any())
             {
-                //TODO
-                try
+                var baseMsg = "Found missing UIDs on enabled modules.";
+                var title = "Missing UID";
+                AsyncAction loginAction = async () =>
                 {
-                    var text = "Found missing UIDs on enabled modules.";
-                    await Logger.Log(text, Verbosity.Silent);
-                    text += "\nDo you want to log in?";
-                    var title = "Missing UID";
-                    var msgBoxResult = Utils.ShowQuestion(text, title);
-                    if (msgBoxResult != MessageBoxResult.Yes)
-                    {
-                        throw new OperationCanceledException();
-                    }
                     DailyToken = await TokenLoader.GetDailyCookiesAndUids(findInvalidUIDs) ?? throw new NullReferenceException();
-                }
-                catch (OperationCanceledException)
+                };
+                var success = await GenericLogin(baseMsg, title, loginAction);
+                if (!success)
                 {
-                    await Logger.Log("Operation was cancelled by the user.", Verbosity.Silent);
-                    exitAfter = true;
-                }
-                catch (Exception ex)
-                {
-                    await Logger.Log(ex.ToString(), Verbosity.Error);
-                    await Logger.Log("Encountered an error during log-in process.", Verbosity.Silent);
                     exitAfter = true;
                 }
             }
 
             if (!GiftToken.IsValid && AllSettings.Values.Any(x => x.GetEnabledRegions().Any()))
             {
-                try
+                var baseMsg = "Code redeems are enabled, but the required tokens are missing.";
+                var title = "Missing gift token";
+                AsyncAction loginAction = async () =>
                 {
-                    var text = "Code redeems are enabled, but the required tokens are missing.";
-                    await Logger.Log(text, Verbosity.Silent);
-                    text += "\nDo you want to log in?";
-                    var title = "Missing gift token";
-                    var msgBoxResult = Utils.ShowQuestion(text, title);
-                    if (msgBoxResult != MessageBoxResult.Yes)
-                    {
-                        throw new OperationCanceledException();
-                    }
                     GiftToken = await TokenLoader.GetGiftCookies() ?? throw new NullReferenceException();
-                }
-                catch (OperationCanceledException)
+                };
+                var success = await GenericLogin(baseMsg, title, loginAction);
+                if (!success)
                 {
-                    await Logger.Log("Operation was cancelled by the user.", Verbosity.Silent);
-                    exitAfter = true;
-                }
-                catch (Exception ex)
-                {
-                    await Logger.Log(ex.ToString(), Verbosity.Error);
-                    await Logger.Log("Encountered an error during log-in process.", Verbosity.Silent);
                     exitAfter = true;
                 }
             }
 
-            await Logger.Log("Rewriting settings...", Verbosity.Detail);
-
-            try
-            {
-                var serialized = JsonSerializer.Serialize(this, Program.JsonOptions);
-                await File.WriteAllTextAsync(Program.SettingsPath, serialized);
-            }
-            catch (Exception ex)
-            {
-                await Logger.Log(ex.ToString(), Verbosity.Error);
-                await Logger.Log("Failed to re-write settings!", Verbosity.Silent);
-                await Utils.ExitFunction(true);
-            }
+            await RewriteSettings();
 
             if (exitAfter)
             {
@@ -337,8 +314,8 @@ namespace AutoCheckin
                 }
                 catch (Exception ex)
                 {
-                    await Logger.Log(ex.ToString(), Verbosity.Error);
-                    await Logger.Log("Failed to init game scripts", Verbosity.Silent);
+                    await Logger.Log(ex.ToString(), Verbosity.Error, color: ConsoleColor.Red);
+                    await Logger.Log("Failed to init game scripts", Verbosity.Silent, color: ConsoleColor.DarkRed);
                     await Utils.ExitFunction(true);
                     return;
                 }
@@ -351,14 +328,14 @@ namespace AutoCheckin
                     }
                     if (!await game.Checkin())
                     {
-                        await Logger.Log($"Failed to check into {game.ClassName}", Verbosity.Silent);
+                        await Logger.Log($"Failed to check into {game.ClassName}", Verbosity.Silent, color: ConsoleColor.Red);
                         failedCheckin.Add(game);
                     }
                 }
                 catch (Exception ex)
                 {
-                    await Logger.Log(ex.ToString(), Verbosity.Error);
-                    await Logger.Log($"Encountered an error while checking into {game.ClassName}", Verbosity.Silent);
+                    await Logger.Log(ex.ToString(), Verbosity.Error, color: ConsoleColor.Red);
+                    await Logger.Log($"Encountered an error while checking into {game.ClassName}", Verbosity.Silent, color: ConsoleColor.DarkRed);
                     failedCheckin.Add(game);
                 }
 
@@ -372,8 +349,8 @@ namespace AutoCheckin
                 }
                 catch (Exception ex)
                 {
-                    await Logger.Log(ex.ToString(), Verbosity.Error);
-                    await Logger.Log($"Encountered an error while redeeming codes for {game.ClassName}", Verbosity.Silent);
+                    await Logger.Log(ex.ToString(), Verbosity.Error, color: ConsoleColor.Red);
+                    await Logger.Log($"Encountered an error while redeeming codes for {game.ClassName}", Verbosity.Silent, color: ConsoleColor.DarkRed);
 
                     failedRedeems.Add(new(game, ex));
                 }
@@ -382,8 +359,8 @@ namespace AutoCheckin
 
             if (!anyCheckin && !anyRedeem)
             {
-                await Logger.Log("It seems like nothing happened...", Verbosity.Silent);
-                await Logger.Log("Make sure that you've configured everything correctly.", Verbosity.Silent);
+                await Logger.Log("It seems like nothing happened...", Verbosity.Silent, color: ConsoleColor.DarkYellow);
+                await Logger.Log("Make sure that you've configured everything correctly.", Verbosity.Silent, color: ConsoleColor.DarkYellow);
                 await Utils.ExitFunction(true);
                 return;
             }
@@ -393,27 +370,33 @@ namespace AutoCheckin
                 var msg = "Failed daily check-in for the following games:";
                 var sb = new StringBuilder();
                 sb.AppendLine(msg);
-                await Logger.Log(msg, Verbosity.Silent);
+                await Logger.Log(msg, Verbosity.Silent, color: ConsoleColor.Red);
                 foreach (var game in failedCheckin)
                 {
                     msg = $"  - {game.ClassName}";
                     sb.AppendLine(msg);
-                    await Logger.Log(msg, Verbosity.Silent);
+                    await Logger.Log(msg, Verbosity.Silent, color: ConsoleColor.Red);
                 }
                 msg = "Do you want to check-in manually?";
                 sb.AppendLine(msg);
-                await Logger.Log(msg, Verbosity.Silent);
-                
+                await Logger.Log(msg, Verbosity.Silent, color: ConsoleColor.Red);
+
                 var text = sb.ToString();
                 var title = "Check-in Failed";
-                var msgBoxResult = Utils.ShowQuestion(text, title);
-                if (msgBoxResult == MessageBoxResult.Yes)
+                var failedCheckinCopy = failedCheckin;
+                AsyncAction loginAction = async () =>
                 {
-                    foreach (var game in failedCheckin)
+                    foreach (var game in failedCheckinCopy)
                     {
                         Utils.OpenUrl(game.DailyManualUrl);
                     }
+                };
+
+                try
+                {
+                    await GenericAskAction("", text, title, loginAction);
                 }
+                catch (OperationCanceledException) {};
             }
 
             if (anyRedeem)
@@ -427,8 +410,8 @@ namespace AutoCheckin
                 }
                 catch (Exception ex)
                 {
-                    await Logger.Log(ex.ToString(), Verbosity.Error);
-                    await Logger.Log("Failed to write tried codes to file", Verbosity.Silent);
+                    await Logger.Log(ex.ToString(), Verbosity.Error, color: ConsoleColor.Red);
+                    await Logger.Log("Failed to write tried codes to file", Verbosity.Silent, color: ConsoleColor.DarkRed);
                 }
             }
 
@@ -441,19 +424,19 @@ namespace AutoCheckin
                 switch (boxedEx)
                 {
                     case CaptchaBlockException ex:
-                        await Logger.Log($"Code redeem for {game.ClassName} was blocked by a captcha check", Verbosity.Silent);
+                        await Logger.Log($"Code redeem for {game.ClassName} was blocked by a captcha check", Verbosity.Silent, color: ConsoleColor.Red);
                         fatalRedeemFailures = true;
                         break;
                     case InvalidRegionException ex:
-                        await Logger.Log($"Failed to redeem codes for {game.ClassName} because an account did not exist in the given region.", Verbosity.Silent);
-                        await Logger.Log($"This could be also be a sign that the wrong UID is set or the token doesn't match.", Verbosity.Silent);
+                        await Logger.Log($"Failed to redeem codes for {game.ClassName} because an account did not exist in the given region.", Verbosity.Silent, color: ConsoleColor.Red);
+                        await Logger.Log($"This could be also be a sign that the wrong UID is set or the token doesn't match.", Verbosity.Silent, color: ConsoleColor.Red);
 
                         fatalRedeemFailures = true;
                         break;
                     case InvalidTokenException ex:
-                        await Logger.Log($"Failed to redeem codes for {game.ClassName} because the user wasn't logged in.", Verbosity.Silent);
-                        await Logger.Log($"All tokens and UIDs were automatically invalidated.", Verbosity.Silent);
-                        await Logger.Log($"You will need to complete setup again on the next launch.", Verbosity.Silent);
+                        await Logger.Log($"Failed to redeem codes for {game.ClassName} because the user wasn't logged in.", Verbosity.Silent, color: ConsoleColor.Red);
+                        await Logger.Log($"All tokens and UIDs were automatically invalidated.", Verbosity.Silent, color: ConsoleColor.Red);
+                        await Logger.Log($"You will need to complete setup again on the next launch.", Verbosity.Silent, color: ConsoleColor.Red);
                         var settings = AllSettings[game.ClassKey];
                         settings.InvalidateRegions();
                         DailyToken.Reset();
@@ -463,11 +446,11 @@ namespace AutoCheckin
                         settingsChanged = true;
                         break;
                     case RequestMalformedException ex:
-                        await Logger.Log($"Failed to redeem codes for {game.ClassName} because the server returned an error.", Verbosity.Silent);
+                        await Logger.Log($"Failed to redeem codes for {game.ClassName} because the server returned an error.", Verbosity.Silent, color: ConsoleColor.Red);
                         fatalRedeemFailures = true;
                         break;
                     case SystemBusyException ex:
-                        await Logger.Log($"Failed to redeem codes for {game.ClassName} because the server is currently unavailable (or the request is malformed).", Verbosity.Silent);
+                        await Logger.Log($"Failed to redeem codes for {game.ClassName} because the server is currently unavailable (or the request is malformed).", Verbosity.Silent, color: ConsoleColor.Red);
                         fatalRedeemFailures = true;
                         break;
                     default:
@@ -476,22 +459,28 @@ namespace AutoCheckin
             }
             if (settingsChanged)
             {
-                await Logger.Log("Rewriting settings...", Verbosity.Detail);
-
-                try
-                {
-                    var serialized = JsonSerializer.Serialize(this, Program.JsonOptions);
-                    await File.WriteAllTextAsync(Program.SettingsPath, serialized);
-                }
-                catch (Exception ex)
-                {
-                    await Logger.Log(ex.ToString(), Verbosity.Error);
-                    await Logger.Log("Failed to re-write settings!", Verbosity.Silent);
-                    await Utils.ExitFunction(true);
-                }
+                await RewriteSettings();
             }
             if (fatalRedeemFailures)
             {
+                await Utils.ExitFunction(true);
+            }
+        }
+
+        async Task RewriteSettings()
+        {
+
+            await Logger.Log("Rewriting settings...", Verbosity.Detail);
+
+            try
+            {
+                var serialized = JsonSerializer.Serialize(this, Program.JsonOptions);
+                await File.WriteAllTextAsync(Program.SettingsPath, serialized);
+            }
+            catch (Exception ex)
+            {
+                await Logger.Log(ex.ToString(), Verbosity.Error, color: ConsoleColor.Red);
+                await Logger.Log("Failed to re-write settings!", Verbosity.Silent, color: ConsoleColor.DarkRed);
                 await Utils.ExitFunction(true);
             }
         }
