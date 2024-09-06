@@ -63,7 +63,6 @@ namespace AutoCheckin.Games
 
             // github
             {
-
                 var githubResponse = await Program.Client.GetAsync("https://raw.githubusercontent.com/themojache/ScrapeAction/main/valid.json");
                 var codes = await githubResponse.Content.ReadFromJsonAsync<string[]>(Program.JsonOptions) ?? Array.Empty<string>();
                 result = result.Concat(codes);
