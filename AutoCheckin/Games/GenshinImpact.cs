@@ -69,7 +69,7 @@ namespace AutoCheckin.Games
                 result = result.Concat(codes);
             }
 
-            return result.ToArray();
+            return result.ToHashSet().ToArray();
         }
     }
 

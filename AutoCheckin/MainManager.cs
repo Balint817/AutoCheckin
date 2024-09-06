@@ -185,7 +185,7 @@ namespace AutoCheckin
             var findInvalidUIDs = AllSettings
                 .Where(x => x.Value.GetEnabledRegions().Any(x => x.CodeRedeemEnabled && !x.IsUIDValid))
                 .Select(x => Games.First(y => y.ClassKey == x.Key))
-                .ToArray();
+                .ToList();
 
 
             if (!DailyToken.IsValid && AllSettings.Values.Any(x => x.CheckinEnabled))
@@ -199,11 +199,11 @@ namespace AutoCheckin
                     {
                         try
                         {
-                            DailyToken = await TokenLoader.GetDailyCookiesAndUids(invalidUidCopy) ?? throw new NullReferenceException();
+                            DailyToken = await TokenLoader.GetDailyCookiesAndUids(invalidUidCopy.ToArray()) ?? throw new NullReferenceException();
                         }
                         finally
                         {
-                            invalidUidCopy = Array.Empty<BaseGame>();
+                            invalidUidCopy.Clear();
                         }
                     }
                     else
@@ -224,7 +224,7 @@ namespace AutoCheckin
                 var title = "Missing UID";
                 AsyncAction loginAction = async () =>
                 {
-                    DailyToken = await TokenLoader.GetDailyCookiesAndUids(findInvalidUIDs) ?? throw new NullReferenceException();
+                    DailyToken = await TokenLoader.GetDailyCookiesAndUids(findInvalidUIDs.ToArray()) ?? throw new NullReferenceException();
                 };
                 var success = await GenericLogin(baseMsg, title, loginAction);
                 if (!success)
