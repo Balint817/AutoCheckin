@@ -14,9 +14,9 @@ namespace AutoCheckin
             message = source?.ToString();
             return message is not null;
         }
-        public static Verbosity LogVerbosity => (Program.MainManager?.VerbosityString is null ? Verbosity.Detail : Program.MainManager.Verbosity);
+        public static Verbosity LogVerbosity => (Program.MainManager?.VerbosityString is null ? Verbosity.FullDebug : Program.MainManager.Verbosity);
         static FileStream? logStream;
-        static StreamWriter LogWriter => new(new NonClosingStreamWrapper(logStream));
+        public static StreamWriter LogWriter => new(new NonClosingStreamWrapper(logStream));
         public static readonly string DateFormat = "[yy-MM-d H:mm:ss]";
         public static string DateNow => DateTime.Now.ToString(DateFormat);
 

@@ -1,7 +1,9 @@
 ﻿using AutoCheckin.Enums;
 using AutoCheckin.Exceptions;
 using AutoCheckin.Objects;
+using MiscUtil.IO;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -92,12 +94,10 @@ namespace AutoCheckin.Games
             }
             var cookie = MainManager.GiftToken.MakeCookie();
 
-            var total = codes.LongLength * enabledRegions.Length;
-            long triedCodesCount = 0;
-
             try
             {
-                await PrintProgress(0, 1, false);
+                var progress = new CodeRedeemProgress(codes.LongLength * enabledRegions.Length);
+                await PrintProgress(progress, false);
 
                 for (int i = 0; i < enabledRegions.Length; i++)
                 {
@@ -106,8 +106,9 @@ namespace AutoCheckin.Games
                     {
                         oldCodesByRegion[settingRegion.RegionKey] = oldCodes = new();
                     }
-                    triedCodesCount = await RedeemCodes(cookie, settingRegion, codes, oldCodes, triedCodesCount, total);
+                    await RedeemCodes(cookie, settingRegion, codes, oldCodes, progress);
                 }
+                await PrintProgress(progress, final: true);
             }
             finally
             {
@@ -115,7 +116,7 @@ namespace AutoCheckin.Games
             }
         }
 
-        async Task PrintProgress(long triedCodesCount, long total, bool clear=true)
+        async Task PrintProgress(CodeRedeemProgress progress, bool clear=true, bool final=false)
         {
             if (MainManager.Verbosity >= Verbosity.PartialDebug)
             {
@@ -125,20 +126,63 @@ namespace AutoCheckin.Games
             {
                 Utils.ClearCurrentConsoleLine();
             }
-            await Console.Out.WriteAsync($"{Logger.DateNow} Progress: {triedCodesCount / (double)total * 100:0.##}%");
+
+            TextWriter stream = final ? Logger.LogWriter : Console.Out;
+
+            try
+            {
+
+                var valid = progress.valid;
+                var skipped = progress.skipped + progress.used;
+                var invalid = progress.expired + progress.invalid + progress.unknown;
+
+                await stream.WriteAsync($"{Logger.DateNow} Progress: ");
+
+                var originalColor = Console.ForegroundColor;
+
+                try
+                {
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    await stream.WriteAsync($"{valid}/");
+
+                    Console.ForegroundColor = ConsoleColor.DarkYellow;
+                    await stream.WriteAsync($"{skipped}/");
+
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    await stream.WriteAsync($"{invalid}/");
+                }
+                finally
+                {
+                    Console.ForegroundColor = originalColor;
+                }
+
+                await stream.WriteAsync($"{progress.Ratio * 100:0.##}%");
+                if (final)
+                {
+                    await stream.WriteLineAsync();
+                }
+            }
+            finally
+            {
+                if (final)
+                {
+                    await stream.DisposeAsync();
+                }
+            }
         }
 
-        async Task<long> RedeemCodes(string cookie, RegionUID settingRegion, string[] codes, List<string> oldCodes, long triedCodesCount, long total)
+        async Task RedeemCodes(string cookie, RegionUID settingRegion, string[] codes, List<string> oldCodes, CodeRedeemProgress progress)
         {
             var region = SettingRegionToUrlRegion(settingRegion.RegionKey);
             for (int i = 0; i < codes.Length; i++)
             {
-                triedCodesCount++;
                 var code = codes[i];
                 if (oldCodes.Contains(code))
                 {
+                    progress.skipped++;
                     continue;
                 }
+                Thread.Sleep(5000);
                 await Logger.Log($"Redeeming code '{code}'...", Verbosity.PartialDebug);
                 var origin = CodeRedeemOrigin;
                 var referer = CodeRedeemReferer;
@@ -180,11 +224,12 @@ namespace AutoCheckin.Games
                     await Logger.Log(responseBody, Verbosity.Error);
                     throw ex;
                 }
+                var progressResp = progress.Add(hoyoResponse);
+                progressResp ??= $"Unknown response.";
+                await Logger.Log(progressResp, Verbosity.PartialDebug);
                 oldCodes.Add(code);
-                Thread.Sleep(5000);
-                await PrintProgress(triedCodesCount, total);
+                await PrintProgress(progress);
             }
-            return triedCodesCount;
         }
 
         internal protected BaseGame(MainManager mainManager)
